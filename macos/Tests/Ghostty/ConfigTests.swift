@@ -69,6 +69,17 @@ struct ConfigTests {
 
     // MARK: - String / Optional String Properties
 
+    @Test func windowShowTabBarDefaultsToAuto() throws {
+        let config = try TemporaryConfig("")
+        #expect(config.windowShowTabBar == "auto")
+    }
+
+    @Test(arguments: ["always", "auto", "never"])
+    func windowShowTabBarValues(value: String) throws {
+        let config = try TemporaryConfig("window-show-tab-bar = \(value)")
+        #expect(config.windowShowTabBar == value)
+    }
+
     @Test func titleDefaultsToNil() throws {
         let config = try TemporaryConfig("")
         #expect(config.title == nil)
@@ -240,5 +251,42 @@ class TemporaryConfig: Ghostty.Config {
 
     deinit {
         try? FileManager.default.removeItem(at: temporaryFile)
+    }
+}
+
+@Suite struct TerminalHostColorsTests {
+    @Test func explicitHostMapping() {
+        let mapping = TerminalHostColors(contents: "# SSH hosts\nscopuli=orange\nother=invalid\n")
+        #expect(mapping.color(forTitle: "SSH: scopuli") == .orange)
+        #expect(mapping.color(forTitle: "SSH: SCOPULI") == .orange)
+        #expect(mapping.color(forTitle: "SSH: rocinante") == .none)
+        #expect(mapping.color(forTitle: "editing scopuli.txt") == .none)
+        #expect(mapping.color(forTitle: "SSH: scopuli-other") == .none)
+    }
+}
+
+@Suite @MainActor struct AutomaticTabColorTests {
+    @Test func manualChoiceSurvivesTitleChanges() {
+        let window = TerminalWindow(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: false)
+        window.usesAutomaticTabColor = false
+        window.tabColor = .blue
+        window.title = "SSH: unconfigured-host"
+        #expect(window.tabColor == .blue)
+        window.title = "Local shell"
+        #expect(window.tabColor == .blue)
+        window.usesAutomaticTabColor = true
+        #expect(window.tabColor == TerminalHostColors.load().color(forTitle: "Local shell"))
+        window.orderOut(nil)
+    }
+}
+
+@Suite struct LocalHostColorTests {
+    @Test func localFallbackDoesNotOverrideExplicitSSHHost() {
+        let mapping = TerminalHostColors(contents: "miller=blue\nscopuli=orange\n")
+        #expect(mapping.color(forTitle: "~", localHost: "miller") == .blue)
+        #expect(mapping.color(forTitle: "vim", localHost: "MILLER.local") == .blue)
+        #expect(mapping.color(forTitle: "SSH: scopuli", localHost: "miller") == .orange)
+        #expect(mapping.color(forTitle: "SSH: unknown", localHost: "miller") == .none)
+        #expect(mapping.color(forTitle: "~", localHost: "other") == .none)
     }
 }

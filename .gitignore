@@ -26,3 +26,6 @@ glad.zip
 
 vgcore.*
 
+
+# Ghostty-TC packaged artifacts
+/dist/

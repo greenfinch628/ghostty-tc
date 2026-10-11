@@ -944,6 +944,7 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         let tabIndex: Int?
         weak var tabGroup: NSWindowTabGroup?
         let tabColor: TerminalTabColor
+        let usesAutomaticTabColor: Bool
     }
 
     convenience init(_ ghostty: Ghostty.App, with undoState: UndoState) {
@@ -954,7 +955,9 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         if let window {
             window.setFrame(undoState.frame, display: true)
             if let terminalWindow = window as? TerminalWindow {
+                terminalWindow.usesAutomaticTabColor = false
                 terminalWindow.tabColor = undoState.tabColor
+                terminalWindow.usesAutomaticTabColor = undoState.usesAutomaticTabColor
             }
 
             // If we have a tab group and index, restore the tab to its original position
@@ -999,7 +1002,8 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
             focusedSurface: focusedSurface?.id,
             tabIndex: window.tabGroup?.windows.firstIndex(of: window),
             tabGroup: window.tabGroup,
-            tabColor: (window as? TerminalWindow)?.tabColor ?? .none)
+            tabColor: (window as? TerminalWindow)?.tabColor ?? .none,
+            usesAutomaticTabColor: (window as? TerminalWindow)?.usesAutomaticTabColor ?? false)
     }
 
     // MARK: - NSWindowController

@@ -67,6 +67,24 @@ enum TerminalTabColor: Int, CaseIterable, Codable {
         }
     }
 
+    /// Choose the higher-contrast monochrome label for the opaque tab fill.
+    /// Resolve dynamic system colors in the tab's current appearance first.
+    func foregroundColor(for appearance: NSAppearance) -> NSColor? {
+        guard let displayColor else { return nil }
+        var resolved: NSColor?
+        appearance.performAsCurrentDrawingAppearance {
+            resolved = displayColor.usingColorSpace(.sRGB)
+        }
+        guard let resolved else { return .labelColor }
+        func linear(_ value: CGFloat) -> CGFloat {
+            value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+        }
+        let luminance = 0.2126 * linear(resolved.redComponent) +
+            0.7152 * linear(resolved.greenComponent) +
+            0.0722 * linear(resolved.blueComponent)
+        return luminance > 0.179 ? .black : .white
+    }
+
     func swatchImage(selected: Bool) -> NSImage {
         let size = NSSize(width: 18, height: 18)
         return NSImage(size: size, flipped: false) { rect in
@@ -181,5 +199,44 @@ private struct TabColorSwatch: View {
         }
         .buttonStyle(.plain)
         .help(color.localizedName)
+    }
+}
+
+/// Explicit SSH title markers avoid matching arbitrary terminal output.
+struct TerminalHostColors {
+    let colors: [String: TerminalTabColor]
+
+    init(contents: String) {
+        var colors: [String: TerminalTabColor] = [:]
+        for line in contents.split(separator: "\n") {
+            let entry = line.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0]
+            let parts = entry.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            let host = parts[0].trimmingCharacters(in: .whitespaces).lowercased()
+            let name = parts[1].trimmingCharacters(in: .whitespaces).lowercased()
+            guard !host.isEmpty,
+                  let color = TerminalTabColor.allCases.first(where: { $0.localizedName.lowercased() == name })
+            else { continue }
+            colors[host] = color
+        }
+        self.colors = colors
+    }
+
+    func color(forTitle title: String, localHost: String = ProcessInfo.processInfo.hostName) -> TerminalTabColor {
+        let marker = "SSH: "
+        guard title.hasPrefix(marker) else {
+            let host = localHost.lowercased().split(separator: ".").first.map(String.init) ?? ""
+            return colors[host] ?? .none
+        }
+        let host = title.dropFirst(marker.count).trimmingCharacters(in: .whitespaces).lowercased()
+        return colors[host] ?? .none
+    }
+
+    static func load() -> Self {
+        let environment = ProcessInfo.processInfo.environment
+        let base = environment["XDG_CONFIG_HOME"].map { URL(fileURLWithPath: $0) } ??
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config")
+        let path = base.appendingPathComponent("ghostty/tc-host-colors")
+        return Self(contents: (try? String(contentsOf: path, encoding: .utf8)) ?? "")
     }
 }

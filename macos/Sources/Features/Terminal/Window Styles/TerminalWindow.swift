@@ -31,6 +31,8 @@ class TerminalWindow: NSWindow {
         return view
     }()
 
+    private var tabColorAccessory: TabColorAccessoryView?
+
     /// The configuration derived from the Ghostty config so we don't need to rely on references.
     private(set) var derivedConfig: DerivedConfig = .init()
 
@@ -58,17 +60,68 @@ class TerminalWindow: NSWindow {
         windowController as? TerminalController
     }
 
-    /// The color assigned to this window's tab. Setting this updates the tab color indicator
+    /// The color assigned to this window's tab. Setting this updates the tab background
     /// and marks the window's restorable state as dirty.
     var tabColor: TerminalTabColor = .none {
         didSet {
             guard tabColor != oldValue else { return }
             tabColorIndicator.rootView = TabColorIndicatorView(tabColor: tabColor)
+            tabColorAccessory?.updateBackground()
+            updateTabColorText()
             invalidateRestorableState()
         }
     }
 
+    // Manual selections are pinned; the menu can explicitly resume automatic colors.
+    var usesAutomaticTabColor = true {
+        didSet {
+            invalidateRestorableState()
+            updateAutomaticTabColor()
+        }
+    }
+
+    private func updateAutomaticTabColor() {
+        guard usesAutomaticTabColor else { return }
+        tabColor = TerminalHostColors.load().color(forTitle: title)
+    }
+
+    @objc private func useAutomaticTabColor(_ sender: NSMenuItem) {
+        guard let target = sender.representedObject as? TerminalWindow else { return }
+        target.usesAutomaticTabColor = true
+    }
+
+    private var tabForegroundColor: NSColor? {
+        guard tabColorAccessory?.hasBackground == true else { return nil }
+        return tabColor.foregroundColor(for: effectiveAppearance)
+    }
+
+    fileprivate func updateTabColorText() {
+        let styledTitle = attributedTitle
+        if tab.attributedTitle != styledTitle { tab.attributedTitle = styledTitle }
+        let shortcut = NSMutableAttributedString(attributedString: keyEquivalentLabel.attributedStringValue)
+        shortcut.addAttribute(
+            .foregroundColor,
+            value: tabForegroundColor ?? (isKeyWindow ? NSColor.labelColor : NSColor.secondaryLabelColor),
+            range: NSRange(location: 0, length: shortcut.length)
+        )
+        if keyEquivalentLabel.attributedStringValue != shortcut { keyEquivalentLabel.attributedStringValue = shortcut }
+        resetZoomTabButton.contentTintColor = tabForegroundColor ??
+            (isKeyWindow ? .controlAccentColor : .secondaryLabelColor)
+    }
+
     // MARK: NSWindow Overrides
+
+    override func update() {
+        super.update()
+
+        // AppKit normally hides the native tab bar when only one tab remains.
+        // Apply the explicit config after AppKit's window updates, including
+        // initial display and removal of the penultimate tab.
+        guard derivedConfig.alwaysShowTabBar,
+              isVisible, styleMask.contains(.titled), tabbingMode != .disallowed,
+              tabGroup?.isTabBarVisible != true else { return }
+        toggleTabBar(nil)
+    }
 
     override var toolbar: NSToolbar? {
         didSet {
@@ -160,7 +213,10 @@ class TerminalWindow: NSWindow {
         // where buttons were not clickable.
         tabColorIndicator.rootView = TabColorIndicatorView(tabColor: tabColor)
 
-        let stackView = NSStackView()
+        let stackView = TabColorAccessoryView()
+        stackView.terminalWindow = self
+        stackView.indicator = tabColorIndicator
+        tabColorAccessory = stackView
         stackView.orientation = .horizontal
         stackView.setHuggingPriority(.defaultHigh, for: .horizontal)
         stackView.spacing = 4
@@ -180,6 +236,7 @@ class TerminalWindow: NSWindow {
     override var canBecomeMain: Bool { return true }
 
     override func sendEvent(_ event: NSEvent) {
+        if showTabContextMenu(for: event) { return }
         if tabTitleEditor.handleMouseDown(event) {
             return
         }
@@ -195,12 +252,12 @@ class TerminalWindow: NSWindow {
 
     override func becomeKey() {
         super.becomeKey()
-        resetZoomTabButton.contentTintColor = .controlAccentColor
+        updateTabColorText()
     }
 
     override func resignKey() {
         super.resignKey()
-        resetZoomTabButton.contentTintColor = .secondaryLabelColor
+        updateTabColorText()
         tabTitleEditor.finishEditing(commit: true)
     }
 
@@ -337,7 +394,7 @@ class TerminalWindow: NSWindow {
                 string: "\(keyEquivalent) ",
                 attributes: [
                     .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-                    .foregroundColor: isKeyWindow ? NSColor.labelColor : NSColor.secondaryLabelColor,
+                    .foregroundColor: tabForegroundColor ?? (isKeyWindow ? NSColor.labelColor : NSColor.secondaryLabelColor),
                 ])
         }
     }
@@ -389,6 +446,7 @@ class TerminalWindow: NSWindow {
 
     override var title: String {
         didSet {
+            updateAutomaticTabColor()
             // Whenever we change the window title we must also update our
             // tab title if we're using custom fonts.
             tab.attributedTitle = attributedTitle
@@ -426,11 +484,12 @@ class TerminalWindow: NSWindow {
 
     // Return a styled representation of our title property.
     var attributedTitle: NSAttributedString? {
-        guard let titlebarFont = titlebarFont else { return nil }
+        guard titlebarFont != nil || tabForegroundColor != nil else { return nil }
 
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: titlebarFont,
-            .foregroundColor: isKeyWindow ? NSColor.labelColor : NSColor.secondaryLabelColor,
+            .font: titlebarFont ?? NSFont.systemFont(ofSize: NSFont.systemFontSize),
+            .foregroundColor: tabForegroundColor ??
+                (isKeyWindow ? NSColor.labelColor : NSColor.secondaryLabelColor),
         ]
         return NSAttributedString(string: title, attributes: attributes)
     }
@@ -579,6 +638,7 @@ class TerminalWindow: NSWindow {
 
     struct DerivedConfig {
         let title: String?
+        let alwaysShowTabBar: Bool
         let backgroundBlur: Ghostty.Config.BackgroundBlur
         let backgroundColor: NSColor
         let backgroundOpacity: Double
@@ -588,6 +648,7 @@ class TerminalWindow: NSWindow {
 
         init() {
             self.title = nil
+            self.alwaysShowTabBar = false
             self.backgroundColor = NSColor.windowBackgroundColor
             self.backgroundOpacity = 1
             self.macosWindowButtons = .visible
@@ -598,6 +659,7 @@ class TerminalWindow: NSWindow {
 
         init(_ config: Ghostty.Config) {
             self.title = config.title
+            self.alwaysShowTabBar = config.windowShowTabBar == "always"
             self.backgroundColor = NSColor(config.backgroundColor)
             self.backgroundOpacity = config.backgroundOpacity
             self.macosWindowButtons = config.macosWindowButtons
@@ -675,6 +737,79 @@ extension TerminalWindow {
 
 }
 
+/// Keeps the fill attached to the tab that owns this accessory, including after
+/// AppKit moves/recreates tab buttons during selection, reordering, or fullscreen.
+/// Tahoe's tab content container is private, just like Ghostty's existing native
+/// tab layout integration. If it changes, retain the original color dot instead.
+private final class TabColorAccessoryView: NSStackView {
+    weak var terminalWindow: TerminalWindow?
+    weak var indicator: NSView?
+    private let background = TabColorBackgroundView()
+
+    var hasBackground: Bool { background.superview != nil }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        updateBackground()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        updateBackground()
+    }
+
+    override func layout() {
+        super.layout()
+        updateBackground()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateBackground()
+    }
+
+    func updateBackground() {
+        guard let terminalWindow,
+              let color = terminalWindow.tabColor.displayColor,
+              let button = firstSuperview(withClassName: "NSTabButton"),
+              let container = button.firstDescendant(withID: "_tabButtonContainerView")
+        else {
+            background.removeFromSuperview()
+            indicator?.isHidden = false
+            terminalWindow?.updateTabColorText()
+            return
+        }
+
+        if background.superview !== container {
+            background.removeFromSuperview()
+            // Inside the glass content, behind labels/controls: the native glass
+            // and selected-tab treatment remain in place, and input is untouched.
+            container.addSubview(background, positioned: .below, relativeTo: container.subviews.first)
+            background.autoresizingMask = [.width, .height]
+        }
+        background.frame = container.bounds
+        background.color = color
+        indicator?.isHidden = true
+        terminalWindow.updateTabColorText()
+    }
+}
+
+/// A purely decorative fill; never intercept tab selection, drag, or context menus.
+private final class TabColorBackgroundView: NSView {
+    var color: NSColor = .clear {
+        didSet { needsDisplay = true }
+    }
+
+    override var allowsVibrancy: Bool { false }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func draw(_ dirtyRect: NSRect) {
+        color.setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 6, yRadius: 6).fill()
+    }
+}
+
 /// A small circle indicator displayed in the tab accessory view that shows
 /// the user-assigned tab color. When no color is set, the view is hidden.
 private struct TabColorIndicatorView: View {
@@ -698,22 +833,71 @@ private struct TabColorIndicatorView: View {
 // MARK: - Tab Context Menu
 
 extension TerminalWindow {
+    private static let directTabMenuIdentifier = NSUserInterfaceItemIdentifier("com.mitchellh.ghostty.directTabMenu")
     private static let closeTabsOnRightMenuItemIdentifier = NSUserInterfaceItemIdentifier("com.mitchellh.ghostty.closeTabsOnTheRightMenuItem")
     private static let changeTitleMenuItemIdentifier = NSUserInterfaceItemIdentifier("com.mitchellh.ghostty.changeTitleMenuItem")
     private static let tabColorSeparatorIdentifier = NSUserInterfaceItemIdentifier("com.mitchellh.ghostty.tabColorSeparator")
 
+    private static let automaticColorIdentifier = NSUserInterfaceItemIdentifier("com.mitchellh.ghostty.automaticTabColor")
     private static let tabColorPaletteIdentifier = NSUserInterfaceItemIdentifier("com.mitchellh.ghostty.tabColorPalette")
 
-    func configureTabContextMenuIfNeeded(_ menu: NSMenu) {
-        guard isTabContextMenu(menu) else { return }
+    /// AppKit does not reliably provide a context menu for native tabs on Tahoe.
+    /// Handle the tab click directly and reuse the existing rename/color section.
+    func showTabContextMenu(for event: NSEvent) -> Bool {
+        let isContextClick = event.type == .rightMouseDown ||
+            (event.type == .otherMouseDown && event.buttonNumber == 2) ||
+            (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
+        guard isContextClick, let sourceWindow = event.window,
+              let hit = tabButtonHit(atScreenPoint: sourceWindow.convertPoint(toScreen: event.locationInWindow)),
+              let targetWindow = (tabbedWindows ?? [self])[safe: hit.index],
+              let target = targetWindow.windowController as? TerminalController
+        else { return false }
+        if tabTitleEditor.handleRightMouseDown(event) { return true }
 
-        // Get the target from an existing menu item. The native tab context menu items
-        // target the specific window/controller that was right-clicked, not the focused one.
-        // We need to use that same target so validation and action use the correct tab.
-        let targetController = menu.items
+        let menu = NSMenu()
+        menu.identifier = Self.directTabMenuIdentifier
+        for (title, action) in [
+            ("Close Tab", "performClose:"),
+            ("Close Other Tabs", "performCloseOtherTabs:"),
+            ("Move Tab to New Window", "moveTabToNewWindow:"),
+            ("Show All Tabs", "toggleTabOverview:")
+        ] {
+            let item = NSMenuItem(title: title, action: NSSelectorFromString(action), keyEquivalent: "")
+            item.target = targetWindow
+            menu.addItem(item)
+        }
+        let closeRight = NSMenuItem(
+            title: "Close Tabs to the Right",
+            action: #selector(TerminalController.closeTabsOnTheRight(_:)),
+            keyEquivalent: ""
+        )
+        closeRight.target = target
+        menu.addItem(closeRight)
+        appendTabModifierSection(to: menu, target: target)
+        NSMenu.popUpContextMenu(menu, with: event, for: hit.tabButton)
+        return true
+    }
+
+    func configureTabContextMenuIfNeeded(_ menu: NSMenu) {
+        guard menu.identifier != Self.directTabMenuIdentifier, isTabContextMenu(menu) else { return }
+
+        // On Tahoe the native close item's target can still reference another tab.
+        // Resolve mouse-opened menus from the same screen-space hit testing used
+        // by inline rename, including the detached fullscreen titlebar window.
+        let clickedWindow: NSWindow? = NSApp.currentEvent.flatMap { event in
+            let isContextClick = event.type == .rightMouseDown ||
+                (event.type == .otherMouseDown && event.buttonNumber == 2) ||
+                (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
+            guard isContextClick, let sourceWindow = event.window,
+                  let index = tabIndex(atScreenPoint: sourceWindow.convertPoint(toScreen: event.locationInWindow))
+            else { return nil }
+            return tabbedWindows?[safe: index]
+        }
+        let nativeTargetController = menu.items
             .first { $0.action == NSSelectorFromString("performClose:") }
             .flatMap { $0.target as? NSWindow }
             .flatMap { $0.windowController as? TerminalController }
+        let targetController = (clickedWindow?.windowController as? TerminalController) ?? nativeTargetController
 
         // Close tabs to the right
         let item = NSMenuItem(title: "Close Tabs to the Right", action: #selector(TerminalController.closeTabsOnTheRight(_:)), keyEquivalent: "")
@@ -755,7 +939,8 @@ extension TerminalWindow {
         menu.removeItems(withIdentifiers: [
             Self.tabColorSeparatorIdentifier,
             Self.changeTitleMenuItemIdentifier,
-            Self.tabColorPaletteIdentifier
+            Self.tabColorPaletteIdentifier,
+            Self.automaticColorIdentifier
         ])
 
         let separator = NSMenuItem.separator()
@@ -770,12 +955,25 @@ extension TerminalWindow {
         changeTitleItem.setImageIfDesired(systemSymbolName: "pencil.line")
         menu.addItem(changeTitleItem)
 
+        let automaticItem = NSMenuItem(
+            title: "Use Automatic Color",
+            action: #selector(useAutomaticTabColor(_:)),
+            keyEquivalent: ""
+        )
+        automaticItem.identifier = Self.automaticColorIdentifier
+        automaticItem.target = self
+        automaticItem.representedObject = target?.window
+        automaticItem.state = (target?.window as? TerminalWindow)?.usesAutomaticTabColor == true ? .on : .off
+        menu.addItem(automaticItem)
+
         let paletteItem = NSMenuItem()
         paletteItem.identifier = Self.tabColorPaletteIdentifier
         paletteItem.view = makeTabColorPaletteView(
             selectedColor: (target?.window as? TerminalWindow)?.tabColor ?? .none
         ) { [weak target] color in
-            (target?.window as? TerminalWindow)?.tabColor = color
+            guard let window = target?.window as? TerminalWindow else { return }
+            window.usesAutomaticTabColor = false
+            window.tabColor = color
         }
         menu.addItem(paletteItem)
     }
