@@ -903,6 +903,14 @@ extension Ghostty {
         }
 
         override func otherMouseDown(with event: NSEvent) {
+            // TC reserves middle-click for the existing native context menu.
+            // Do not forward it to the core, where it would paste.
+            if event.buttonNumber == 2 {
+                if let menu = menu(for: event) {
+                    NSMenu.popUpContextMenu(menu, with: event, for: self)
+                }
+                return
+            }
             guard let surface = self.surface else { return }
             let mods = Ghostty.ghosttyMods(event.modifierFlags)
             let button = Ghostty.Input.MouseButton(fromNSEventButtonNumber: event.buttonNumber)
@@ -910,6 +918,7 @@ extension Ghostty {
         }
 
         override func otherMouseUp(with event: NSEvent) {
+            if event.buttonNumber == 2 { return }
             guard let surface = self.surface else { return }
             let mods = Ghostty.ghosttyMods(event.modifierFlags)
             let button = Ghostty.Input.MouseButton(fromNSEventButtonNumber: event.buttonNumber)
@@ -1455,11 +1464,14 @@ extension Ghostty {
         }
 
         override func menu(for event: NSEvent) -> NSMenu? {
-            // We only support right-click menus
+            // Reuse the native menu for right-click and TC middle-click.
             switch event.type {
             case .rightMouseDown:
                 // Good
                 break
+
+            case .otherMouseDown:
+                guard event.buttonNumber == 2 else { return nil }
 
             case .leftMouseDown:
                 if !event.modifierFlags.contains(.control) {

@@ -9,6 +9,16 @@ const log = std.log.scoped(.config);
 /// Default path for the XDG home configuration file. Returned value
 /// must be freed by the caller.
 pub fn defaultXdgPath(alloc: Allocator) ![]const u8 {
+    // TC uses one stable path regardless of the launch environment.
+    if (comptime builtin.os.tag == .macos) {
+        var buf: [1024]u8 = undefined;
+        const home = try internal_os.home(&buf) orelse return error.NoHomeDir;
+        return try internal_os.xdg.config(alloc, .{
+            .home = home,
+            .subdir = "ghostty-tc/config.ghostty",
+        });
+    }
+
     return try internal_os.xdg.config(
         alloc,
         .{ .subdir = "ghostty/config.ghostty" },
@@ -94,6 +104,8 @@ pub fn preferredAppSupportPath(alloc: Allocator) ![]const u8 {
 ///
 /// The returned value must be freed by the caller.
 pub fn preferredDefaultFilePath(alloc: Allocator) ![]const u8 {
+    if (comptime builtin.os.tag == .macos) return try defaultXdgPath(alloc);
+
     switch (builtin.os.tag) {
         .macos => {
             // macOS prefers the Application Support directory

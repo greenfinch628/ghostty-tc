@@ -22,7 +22,8 @@ def run(*command, cwd=root):
 brew = shutil.which('brew') or '/opt/homebrew/bin/brew'
 zig_prefix = subprocess.check_output([brew, '--prefix', 'zig@0.15'], text=True).strip()
 run(Path(zig_prefix) / 'bin/zig', 'build', '-Demit-macos-app=false',
-    '-Demit-xcframework=true', '-Dxcframework-target=native', '-Doptimize=ReleaseFast')
+    '-Demit-xcframework=true', '-Dxcframework-target=native', '-Doptimize=ReleaseFast',
+    '-Dversion-string=1.3.1')
 # Xcode 26.6 libtool can drop misaligned members in Zig 0.15.2 archives.
 # Extracting the original objects and archiving them directly preserves them.
 with tempfile.TemporaryDirectory(prefix='ghostty-tc-') as temporary:
@@ -65,8 +66,18 @@ with tempfile.TemporaryDirectory(prefix='ghostty-tc-') as temporary:
     info.update(CFBundleName='Ghostty-TC', CFBundleDisplayName='Ghostty-TC',
                 CFBundleIdentifier='local.miller.ghosttytc.singletab',
                 CFBundleShortVersionString='1.3.1', CFBundleVersion='131',
-                SUEnableAutomaticChecks=False)
+                SUEnableAutomaticChecks=False, GhosttyTCDefaultIcon='holographic',
+                CFBundleIconFile='GhosttyTC')
+    info.pop('CFBundleIconName', None)
     info_path.write_bytes(plistlib.dumps(info))
+    iconset = temporary / 'GhosttyTC.iconset'
+    iconset.mkdir()
+    icon_source = root / 'macos/Assets.xcassets/Alternate Icons/HolographicImage.imageset/macOS-AppIcon-1024px.png'
+    for size in [16, 32, 128, 256, 512]:
+        for scale in [1, 2]:
+            name = f'icon_{size}x{size}' + ('@2x' if scale == 2 else '') + '.png'
+            run('sips', '-z', size * scale, size * scale, icon_source, '--out', iconset / name)
+    run('iconutil', '-c', 'icns', iconset, '-o', app / 'Contents/Resources/GhosttyTC.icns')
     run('xattr', '-cr', app)
     run('codesign', '--force', '--sign', '-', '--entitlements',
         root / 'macos/GhosttyDebug.entitlements', '--identifier',

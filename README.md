@@ -11,7 +11,7 @@ A macOS customization of [Ghostty](https://ghostty.org), based on **v1.3.1**, fo
 - A separate **Ghostty-TC** app name and bundle identity; regular Ghostty can remain installed.
 - Configurable local host colors and explicit `SSH: hostname` title mappings. Manual selections stay pinned until **Use Automatic Color** is selected.
 
-**Current limits:** this is an experimental macOS fork. Automatic coloring recognizes explicit titles, not SSH connections. An ordinary `ssh hostname` command is not detected unless its tab title supplies the marker. The icon is still visually the standard Ghostty icon. Full backgrounds use Tahoe's private native tab container, falling back to the original color dot if that container is unavailable.
+**Current limits:** this is an experimental macOS fork. Automatic coloring recognizes explicit titles, not SSH connections. An ordinary `ssh hostname` command is not detected unless its tab title supplies the marker. The packaged app uses Ghostty’s Holographic alternate icon. Full backgrounds use Tahoe's private native tab container, falling back to the original color dot if that container is unavailable.
 
 ## Installation
 

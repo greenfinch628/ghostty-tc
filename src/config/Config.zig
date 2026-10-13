@@ -3992,6 +3992,19 @@ fn writeConfigTemplate(path: []const u8) !void {
 /// The legacy `config` file (without extension) is first loaded,
 /// then `config.ghostty`.
 pub fn loadDefaultFiles(self: *Config, alloc: Allocator) !void {
+    // Ghostty-TC deliberately skips upstream XDG and Application Support files.
+    // Keep this path identical to Settings / Open Configuration.
+    if (comptime builtin.os.tag == .macos) {
+        const path = try file_load.defaultXdgPath(alloc);
+        defer alloc.free(path);
+        if (self.loadOptionalFile(alloc, path) == .not_found) {
+            writeConfigTemplate(path) catch |err| {
+                log.warn("error creating template config file err={}", .{err});
+            };
+        }
+        return;
+    }
+
     // Load XDG first
     const legacy_xdg_path = try file_load.legacyDefaultXdgPath(alloc);
     defer alloc.free(legacy_xdg_path);

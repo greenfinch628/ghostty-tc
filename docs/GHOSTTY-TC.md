@@ -42,23 +42,25 @@ The test build may register development apps with macOS app search. Use the pack
 
 Packaged name: **Ghostty-TC**. Bundle identifier: `local.miller.ghosttytc.singletab`. The historical suffix is intentional: keeping the existing identity preserves its preferences and saved sessions. Upstream's identifier is `com.mitchellh.ghostty`.
 
-The helper retains the upstream icon artwork, disables upstream automatic updates for the fork, removes test plug-ins, and ad-hoc signs the package. A distinctive TC icon is still pending. The unchanged source Xcode target retains its development identity; use the packaging helper to create the daily-use app.
+The helper packages Ghostty’s Holographic alternate icon, disables upstream automatic updates for the fork, removes test plug-ins, and ad-hoc signs the package. Icon preferences use the packaged app’s own bundle identity. The unchanged source Xcode target retains its development identity; use the packaging helper to create the daily-use app.
 
 Extract the ZIP, then move Ghostty-TC.app into `~/Applications`. Back up any existing experimental build before replacing it. Never replace the Homebrew installation at `/Applications/Ghostty.app`.
 
 ## Main configuration
 
-Ghostty-TC and regular Ghostty share the normal Ghostty configuration paths. Ghostty 1.3.1 loads the legacy `config` first and the newer `config.ghostty` afterward. Prefer one `~/.config/ghostty/config.ghostty` file; Settings opens the preferred configuration. Normal Ghostty settings in this file affect both applications.
+On macOS, Ghostty-TC loads only `~/.config/ghostty-tc/config.ghostty` by default, including Finder, Dock, and AppleScript launches. Settings / Open Configuration opens that same file. `XDG_CONFIG_HOME`, legacy `config` files, and Application Support configuration files do not change this default. Explicit `--config-file` arguments and `config-file` includes remain supported. Regular Ghostty is independent. The Zig core uses the packaged TC bundle identifier for its macOS Application Support and cache directories.
 
 ```ini
 theme = "Aardvark Blue"
-font-family = "MesloLGLDZ Nerd Font Mono"
-font-size = 16
+font-family = "CaskaydiaCove Nerd Font Mono"
+font-size = 18
 macos-titlebar-style = native
 window-show-tab-bar = always
 window-save-state = always
 right-click-action = copy-or-paste
 ```
+
+Middle-click opens Ghostty’s existing native context menu without forwarding a middle-button paste to the terminal core. Right-click continues to honor `right-click-action = copy-or-paste`. Other auxiliary mouse buttons retain their existing behavior.
 
 The macOS customization honors `window-show-tab-bar = always`. It preserves native behavior for `auto` and `never`; `never` is not newly implemented on macOS. Restart after changing tab-bar behavior.
 

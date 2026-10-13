@@ -20,7 +20,9 @@ enum AppIcon: Equatable, Codable {
     init?(config: Ghostty.Config) {
         switch config.macosIcon {
         case .official:
-            return nil
+            // Only packaged TC builds opt into this alternate default.
+            guard Bundle.main.infoDictionary?["GhosttyTCDefaultIcon"] as? String == "holographic" else { return nil }
+            self = .holographic
         case .blueprint:
             self = .blueprint
         case .chalkboard:
