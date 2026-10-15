@@ -15,6 +15,9 @@ A macOS customization of [Ghostty](https://ghostty.org), based on **v1.3.1**, fo
 
 ## Installation
 
+For the convenient clone/build/install workflow, see [Build from source](SOURCE-INSTALL.md).
+
+
 Build and package with the instructions in [Ghostty-TC documentation](docs/GHOSTTY-TC.md), then extract `Ghostty-TC.zip` and put **Ghostty-TC.app** in `~/Applications`. Do not replace `/Applications/Ghostty.app`. Locally built bundles are ad-hoc signed, not notarized distribution releases.
 
 ## Configuration
