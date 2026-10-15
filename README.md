@@ -2,6 +2,19 @@
 
 A macOS customization of [Ghostty](https://ghostty.org), based on **v1.3.1**, for full tab background colors and host color mappings. Developed and tested on an Apple Silicon Mac running macOS Tahoe.
 
+## Project status and support
+
+Ghostty-TC is provided **as is, without warranty**. **No technical support is
+provided.** There is no commitment to ongoing maintenance, updates, or
+compatibility with future operating system or dependency versions.
+
+Bug reports, enhancement requests, and proposed fixes or improvements are
+welcome through this project's [GitHub repository](https://github.com/greenfinch628/ghostty-tc)
+or [Gitea repository](http://scopuli:3000/scopuli/ghostty-tc) and will be considered
+at the maintainer's discretion. Submitting a report, request, or contribution
+does not guarantee a response, investigation, acceptance, fix, or implementation.
+No release or completion date is promised.
+
 ## Features
 
 - Full tab backgrounds using Ghostty's existing color palette, with contrasting labels.
