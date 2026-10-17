@@ -76,9 +76,7 @@ a new folder, build with `--test`, open the installed app, and verify editing or
 terminal input, tab colors, closing/reopening, and saved-session restoration.
 Then rebuild to check that the prior app is backed up and settings are retained.
 
-The installer has been checked for syntax, command-line behavior, platform
-rejection, and staged installation/backup behavior on Linux. Actual Xcode builds,
-macOS tests, signing, and launching still need to be verified directly on the Mac.
+Validated on Miller on 2026-10-17: Xcode build, existing tests, local signature verification, and installation in `~/Applications` completed successfully. The Xcode test action succeeded. This Mac required `--repair-archives` for the documented native archive link issue.
 
 ## Ghostty-TC specifics
 
@@ -96,3 +94,34 @@ python3 scripts/build-and-install.py --repair-archives --test
 
 This workaround is opt-in and specific to the native Apple Silicon framework.
 Ghostty-TC uses Metal, so the physical Mac is the final graphics test target.
+
+
+## Continuing development on Miller
+
+Use `~/XcodeProjects/ghostty-tc` as the development checkout and the app in
+`~/Applications` for everyday use. `origin` points to GitHub and `gitea` to
+Scopuli Gitea; `main` tracks `origin/main`. Miller has SSH access to both.
+
+Before work, fetch both remotes and check their main branches agree:
+
+```sh
+git fetch origin
+git fetch gitea
+git status -sb
+git rev-parse origin/main gitea/main
+git pull --ff-only
+```
+
+Before committing and pushing, update `CHANGELOG.md` with an ISO 8601 UTC
+timestamp and a categorized description. Build and test on Miller, then commit
+the change and changelog together. Publish to both hosts:
+
+```sh
+git push origin main
+git push gitea main
+git ls-remote origin refs/heads/main
+git ls-remote gitea refs/heads/main
+```
+
+Verify the hashes agree. Push release tags and any release artifacts to both
+hosts when creating a release. Never push custom changes to `upstream`.
