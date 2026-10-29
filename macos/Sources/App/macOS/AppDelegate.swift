@@ -83,7 +83,7 @@ class AppDelegate: NSObject,
     @IBOutlet private var menuMoveSplitDividerRight: NSMenuItem?
 
     /// A launcher request owns startup; avoid automatic recovery and the initial blank window.
-    let isExplicitProjectLaunch = ProcessInfo.processInfo.environment["GHOSTTY_TC_EXPLICIT_LAUNCH"] == "1"
+    var isExplicitProjectLaunch = ProcessInfo.processInfo.environment["GHOSTTY_TC_EXPLICIT_LAUNCH"] == "1"
 
     /// The dock menu
     private var dockMenu: NSMenu = NSMenu()
@@ -211,6 +211,7 @@ class AppDelegate: NSObject,
         ])
 
         installProjectMenu()
+        seedLocalProjectRecents()
 
         // Store our start time
         applicationLaunchTime = ProcessInfo.processInfo.systemUptime
@@ -462,6 +463,20 @@ class AppDelegate: NSObject,
     }
 
     func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+        let url = URL(fileURLWithPath: filename)
+        if url.pathExtension.lowercased() == "ghostty-project" {
+            // A document-open event arrives before first activation on a cold launch.
+            let coldLaunch = !applicationHasBecomeActive
+            if coldLaunch { isExplicitProjectLaunch = true }
+            let restored = coldLaunch ? TerminalController.all.filter { $0.isAutomaticallyRestored } : []
+            let opened = loadLocalProject(at: url)
+            if opened {
+                // Restoration can precede document delivery. Only discard windows
+                // recreated by this launch, never windows from an active session.
+                for controller in restored { controller.closeTabImmediately(registerRedo: false) }
+            }
+            return opened
+        }
         // Ghostty will validate as well but we can avoid creating an entirely new
         // surface by doing our own validation here. We can also show a useful error
         // this way.

@@ -86,12 +86,7 @@ struct TerminalProjectTests {
         let dock = try #require(delegate.applicationDockMenu(NSApp))
         #expect(dock.items.contains { $0.title == "Open Project…" })
         #expect(TerminalController.all.count == existing.count)
-        let menu = NSMenu()
-        delegate.appendProjectDockItems(to: menu, projects: [url])
-        let shortcut = try #require(menu.items.first { $0.title == "Dock Test" })
-        let action = try #require(shortcut.action)
-        #expect(shortcut.representedObject as? URL == url)
-        #expect(NSApp.sendAction(action, to: shortcut.target, from: shortcut))
+        #expect(delegate.application(NSApp, openFile: url.path))
         try await Task.sleep(for: .seconds(2))
         let created = TerminalController.all.filter { !existing.contains(ObjectIdentifier($0)) }
         #expect(created.count == 3)
@@ -121,6 +116,12 @@ struct TerminalProjectTests {
         delegate.application(NSApp, open: [try #require(launch.url)])
         try await Task.sleep(for: .seconds(1))
         #expect(TerminalController.all.count == existing.count + 6)
+        #expect(delegate.application(NSApp, openFile: url.path))
+        try await Task.sleep(for: .seconds(1))
+        #expect(TerminalController.all.count == existing.count + 9)
+        #expect(NSDocumentController.shared.recentDocumentURLs.contains {
+            $0.resolvingSymlinksInPath() == url.resolvingSymlinksInPath()
+        })
         let directory = try #require(research.surfaceTree.first?.pwd)
         #expect(URL(fileURLWithPath: directory).resolvingSymlinksInPath() ==
                 URL(fileURLWithPath: project.windows[0].tabs[0].directory).resolvingSymlinksInPath())

@@ -94,9 +94,7 @@ def main():
     print(f'Installed: {destination}')
     if backup is not None:
         print(f'Previous app retained at: {backup}')
-    run('python3', ROOT / 'macos/build-project-launcher.py', '--install-only',
-        '--install-dir', args.install_dir)
-    print('Open the app or Ghostty-TC Projects from Finder. Existing settings and recovery are retained.')
+    print('Open Ghostty-TC from Finder. Existing settings and recovery are retained.')
 
 
 if __name__ == '__main__':

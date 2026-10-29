@@ -119,6 +119,7 @@ class TerminalWindowRestoration: NSObject, NSWindowRestoration {
         let c = TerminalController.init(
             appDelegate.ghostty,
             withSurfaceTree: state.surfaceTree)
+        c.isAutomaticallyRestored = true
         guard let window = c.window else {
             completionHandler(nil, TerminalRestoreError.windowDidNotLoad)
             return

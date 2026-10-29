@@ -82,30 +82,23 @@ and Spaces are not captured. Known `SSH: ` tabs and split panes are rejected;
 unmarked SSH tabs cannot be identified reliably and must be excluded by closing
 them before saving. This first step is for local sessions only. Missing folders
 or invalid project data are reported before any project windows are opened.
-While Ghostty-TC is running (including with all windows closed), right-click its
-Dock icon to select a saved project directly, or choose **Open Project…** to browse.
-The menu refreshes on each opening and lists up to 30 projects from the default
-Projects folder and recently saved/opened files elsewhere. Missing files are omitted.
-Projects saved elsewhere before this update appear after being opened once.
-macOS provides this custom Dock menu only while the app is running; after Quit,
-launch the app first. Project management remains a later step. Automatic quit restoration
+Right-click Ghostty-TC's Dock icon to open native recent projects, including after
+Quit. While running, its custom **Open Project…** command also browses all saved
+project files. Project management remains a later step.
+
+Automatic quit restoration
 and the normal launch configuration remain independent of explicit project files.
 
-### Standalone project launcher
+### Native Dock recents
 
-Open **Ghostty-TC Projects.app** in `~/Applications` and choose **Default — One
-Terminal**, a saved project, or **Browse…**. It also works after Ghostty-TC is
-fully quit. Default creates one new window with one tab in your home folder;
-a project opens its saved layout. If Ghostty-TC is already running, existing
-windows stay open. For a cold launch through this chooser, automatic quit
-recovery and the initial blank terminal are skipped for that launch only.
-The chooser quits after handing the selection to Ghostty-TC, and Cancel opens
-nothing. Its blue folder icon distinguishes it from the terminal app.
-
-`macos/build-tc.py` also builds `dist/Ghostty-TC-Projects.zip`; the source installer
-installs both apps. To rebuild just the chooser, run
-`python3 macos/build-project-launcher.py`; to install the existing chooser ZIP,
-run `python3 macos/build-project-launcher.py --install-only`.
+Saved and opened projects are registered with macOS as recent documents for
+Ghostty-TC itself. After Quit, right-click the Ghostty-TC Dock icon to choose a
+recent project, just as with Xcode. macOS controls the number of visible recents
+and their display. Existing project files are registered on the first launch of
+this update. A selected project opens its layout without the extra initial
+terminal or automatic recovery windows. If Ghostty-TC is already active, existing
+windows remain open. Double-clicking a `.ghostty-project` file also opens it as a
+project. The separate Projects launcher is retired; only Ghostty-TC is packaged.
 
 ## Host mappings and manual priority
 

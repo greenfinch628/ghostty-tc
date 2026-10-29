@@ -157,7 +157,7 @@ extension AppDelegate {
             let panel = NSSavePanel()
             panel.title = "Save Project"
             panel.message = "Save all terminal windows, tab order, names, colors, and local folders. Reopening starts fresh local shells; SSH connections and running programs are not saved."
-            panel.nameFieldStringValue = "My Project.ghostty-project"
+            panel.nameFieldStringValue = "My Project"
             panel.directoryURL = projectDirectory
             panel.allowedContentTypes = [.init(filenameExtension: "ghostty-project") ?? .json]
             panel.canCreateDirectories = true
@@ -182,12 +182,8 @@ extension AppDelegate {
         loadLocalProject(at: url)
     }
 
-    @objc func openDockProject(_ sender: NSMenuItem) {
-        guard let url = sender.representedObject as? URL else { return }
-        loadLocalProject(at: url)
-    }
-
-    func loadLocalProject(at url: URL) {
+    @discardableResult
+    func loadLocalProject(at url: URL) -> Bool {
         do {
             let data = try Data(contentsOf: url)
             guard data.count <= 5_000_000 else {
@@ -197,42 +193,38 @@ extension AppDelegate {
             try project.validate()
             rememberLocalProject(url)
             restoreLocalProject(project)
+            return true
         } catch {
             NSApp.activate(ignoringOtherApps: true)
             NSApp.presentError(error)
+            return false
         }
     }
 
     private func rememberLocalProject(_ url: URL) {
+        NSDocumentController.shared.noteNewRecentDocumentURL(url)
         var paths = UserDefaults.ghostty.stringArray(forKey: "LocalProjectPaths") ?? []
         paths.removeAll { $0 == url.standardizedFileURL.path }
         paths.insert(url.standardizedFileURL.path, at: 0)
         UserDefaults.ghostty.set(Array(paths.prefix(30)), forKey: "LocalProjectPaths")
     }
 
-    func appendProjectDockItems(to menu: NSMenu, projects: [URL]? = nil) {
+    func seedLocalProjectRecents() {
+        let defaults = UserDefaults.ghostty
+        guard !defaults.bool(forKey: "DidSeedNativeProjectRecents") else { return }
+        let recent = (defaults.stringArray(forKey: "LocalProjectPaths") ?? []).map { URL(fileURLWithPath: $0) }
+        let files = TerminalProject.savedProjectURLs(in: projectDirectory, recent: recent)
+        for url in files.prefix(30).reversed() {
+            NSDocumentController.shared.noteNewRecentDocumentURL(url)
+        }
+        defaults.set(true, forKey: "DidSeedNativeProjectRecents")
+    }
+
+    func appendProjectDockItems(to menu: NSMenu) {
         menu.addItem(.separator())
         let open = NSMenuItem(title: "Open Project…", action: #selector(openLocalProject(_:)), keyEquivalent: "")
         open.target = self
         menu.addItem(open)
-        let recent = (UserDefaults.ghostty.stringArray(forKey: "LocalProjectPaths") ?? [])
-            .map { URL(fileURLWithPath: $0) }
-        let saved = projects ?? TerminalProject.savedProjectURLs(in: projectDirectory, recent: recent)
-        guard !saved.isEmpty else { return }
-        menu.addItem(.separator())
-        let header = NSMenuItem(title: "Saved Projects", action: nil, keyEquivalent: "")
-        header.isEnabled = false
-        menu.addItem(header)
-        for url in saved.prefix(30) {
-            let name = url.deletingPathExtension().lastPathComponent
-            let duplicate = saved.filter { $0.deletingPathExtension().lastPathComponent == name }.count > 1
-            let title = duplicate ? "\(name) (\(url.deletingLastPathComponent().path))" : name
-            let item = NSMenuItem(title: title, action: #selector(openDockProject(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = url
-            item.toolTip = url.path
-            menu.addItem(item)
-        }
     }
 
     func captureLocalProject() throws -> TerminalProject {

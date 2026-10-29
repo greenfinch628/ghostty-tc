@@ -80,10 +80,9 @@ Validated on Miller on 2026-10-17: Xcode build, existing tests, local signature 
 
 ## Ghostty-TC specifics
 
-The installer also installs **Ghostty-TC Projects.app**, a separate blue-folder
-launcher. It offers a fresh one-window/one-tab default, saved projects, and Browse.
-Use it when Ghostty-TC is fully quit; it starts only the chosen layout. You can
-drag this launcher from `~/Applications` into the Dock.
+Ghostty-TC registers saved projects as native recent documents. Right-click its
+Dock icon to reopen a recent project even after Quit. The separate Projects
+launcher is retired and is no longer built or installed.
 
 This wraps the existing `macos/build-tc.py` helper and installs its packaged
 Ghostty-TC bundle; regular Ghostty keeps its own identity and installation.
