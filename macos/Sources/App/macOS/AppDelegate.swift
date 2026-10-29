@@ -1089,6 +1089,7 @@ class AppDelegate: NSObject,
 extension AppDelegate {
     /// This is called for the dock right-click menu.
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        reloadDockMenu()
         return dockMenu
     }
 
@@ -1099,6 +1100,7 @@ extension AppDelegate {
         dockMenu.removeAllItems()
         dockMenu.addItem(newWindow)
         dockMenu.addItem(newTab)
+        appendProjectDockItems(to: dockMenu)
     }
 
     /// Setup all the images for our menu items.

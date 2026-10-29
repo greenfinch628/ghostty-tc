@@ -55,6 +55,18 @@ struct TerminalProject: Codable {
         }
     }
 
+    /// Include existing snapshots and recently used files saved outside the default folder.
+    static func savedProjectURLs(in directory: URL, recent: [URL]) -> [URL] {
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsHiddenFiles])) ?? []
+        var seen = Set<URL>()
+        return (files + recent).map { $0.resolvingSymlinksInPath().standardizedFileURL }.filter { url in
+            guard url.pathExtension.lowercased() == "ghostty-project",
+                  (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else { return false }
+            return seen.insert(url).inserted
+        }.sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
+    }
+
     /// Keep a saved frame on a connected screen; resize only when it cannot fit.
     static func visibleFrame(_ saved: CGRect, screens: [CGRect]) -> CGRect {
         guard let screen = screens.max(by: {
@@ -105,10 +117,12 @@ extension AppDelegate {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             try encoder.encode(project).write(to: url, options: .atomic)
+            rememberLocalProject(url)
         } catch { NSApp.presentError(error) }
     }
 
     @objc func openLocalProject(_ sender: Any?) {
+        NSApp.activate(ignoringOtherApps: true)
         let panel = NSOpenPanel()
         panel.title = "Open Project"
         panel.message = "Open saved local terminals in additional windows."
@@ -117,6 +131,15 @@ extension AppDelegate {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        loadLocalProject(at: url)
+    }
+
+    @objc func openDockProject(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        loadLocalProject(at: url)
+    }
+
+    func loadLocalProject(at url: URL) {
         do {
             let data = try Data(contentsOf: url)
             guard data.count <= 5_000_000 else {
@@ -124,8 +147,44 @@ extension AppDelegate {
             }
             let project = try JSONDecoder().decode(TerminalProject.self, from: data)
             try project.validate()
+            rememberLocalProject(url)
             restoreLocalProject(project)
-        } catch { NSApp.presentError(error) }
+        } catch {
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.presentError(error)
+        }
+    }
+
+    private func rememberLocalProject(_ url: URL) {
+        var paths = UserDefaults.ghostty.stringArray(forKey: "LocalProjectPaths") ?? []
+        paths.removeAll { $0 == url.standardizedFileURL.path }
+        paths.insert(url.standardizedFileURL.path, at: 0)
+        UserDefaults.ghostty.set(Array(paths.prefix(30)), forKey: "LocalProjectPaths")
+    }
+
+    func appendProjectDockItems(to menu: NSMenu, projects: [URL]? = nil) {
+        menu.addItem(.separator())
+        let open = NSMenuItem(title: "Open Project…", action: #selector(openLocalProject(_:)), keyEquivalent: "")
+        open.target = self
+        menu.addItem(open)
+        let recent = (UserDefaults.ghostty.stringArray(forKey: "LocalProjectPaths") ?? [])
+            .map { URL(fileURLWithPath: $0) }
+        let saved = projects ?? TerminalProject.savedProjectURLs(in: projectDirectory, recent: recent)
+        guard !saved.isEmpty else { return }
+        menu.addItem(.separator())
+        let header = NSMenuItem(title: "Saved Projects", action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        menu.addItem(header)
+        for url in saved.prefix(30) {
+            let name = url.deletingPathExtension().lastPathComponent
+            let duplicate = saved.filter { $0.deletingPathExtension().lastPathComponent == name }.count > 1
+            let title = duplicate ? "\(name) (\(url.deletingLastPathComponent().path))" : name
+            let item = NSMenuItem(title: title, action: #selector(openDockProject(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = url
+            item.toolTip = url.path
+            menu.addItem(item)
+        }
     }
 
     func captureLocalProject() throws -> TerminalProject {

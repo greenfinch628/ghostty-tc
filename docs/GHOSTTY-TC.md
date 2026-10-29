@@ -82,7 +82,13 @@ and Spaces are not captured. Known `SSH: ` tabs and split panes are rejected;
 unmarked SSH tabs cannot be identified reliably and must be excluded by closing
 them before saving. This first step is for local sessions only. Missing folders
 or invalid project data are reported before any project windows are opened.
-Dock access and project management are later steps. Automatic quit restoration
+While Ghostty-TC is running (including with all windows closed), right-click its
+Dock icon to select a saved project directly, or choose **Open Project…** to browse.
+The menu refreshes on each opening and lists up to 30 projects from the default
+Projects folder and recently saved/opened files elsewhere. Missing files are omitted.
+Projects saved elsewhere before this update appear after being opened once.
+macOS provides this custom Dock menu only while the app is running; after Quit,
+launch the app first. Project management remains a later step. Automatic quit restoration
 and the normal launch configuration remain independent of explicit project files.
 
 ## Host mappings and manual priority

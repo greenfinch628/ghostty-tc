@@ -75,7 +75,22 @@ struct TerminalProjectTests {
             }
         }
         let project = sample()
-        delegate.restoreLocalProject(project)
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("Dock Test.ghostty-project")
+        try JSONEncoder().encode(project).write(to: url)
+        let previousPaths = UserDefaults.ghostty.object(forKey: "LocalProjectPaths")
+        defer { UserDefaults.ghostty.set(previousPaths, forKey: "LocalProjectPaths") }
+        let dock = try #require(delegate.applicationDockMenu(NSApp))
+        #expect(dock.items.contains { $0.title == "Open Project…" })
+        #expect(TerminalController.all.count == existing.count)
+        let menu = NSMenu()
+        delegate.appendProjectDockItems(to: menu, projects: [url])
+        let shortcut = try #require(menu.items.first { $0.title == "Dock Test" })
+        let action = try #require(shortcut.action)
+        #expect(shortcut.representedObject as? URL == url)
+        #expect(NSApp.sendAction(action, to: shortcut.target, from: shortcut))
         try await Task.sleep(for: .seconds(2))
         let created = TerminalController.all.filter { !existing.contains(ObjectIdentifier($0)) }
         #expect(created.count == 3)
@@ -106,6 +121,24 @@ struct TerminalProjectTests {
         #expect(abs(firstWindow.frame.minY - frame.minY) < 2)
         #expect(abs(firstWindow.frame.width - frame.width) < 2)
         #expect(abs(firstWindow.frame.height - frame.height) < 2)
+    }
+
+    @Test func savedProjectListFindsExistingFilesAndDropsDuplicates() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let local = folder.appendingPathComponent("Alpha.ghostty-project")
+        let elsewhere = folder.appendingPathComponent("Elsewhere", isDirectory: true)
+        try FileManager.default.createDirectory(at: elsewhere, withIntermediateDirectories: true)
+        let remoteFile = elsewhere.appendingPathComponent("Beta.ghostty-project")
+        let missing = folder.appendingPathComponent("Missing.ghostty-project")
+        let unrelated = folder.appendingPathComponent("Notes.txt")
+        let directory = folder.appendingPathComponent("NotAFile.ghostty-project", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for url in [local, remoteFile, unrelated] { try Data().write(to: url) }
+        #expect(TerminalProject.savedProjectURLs(in: folder, recent: [local, remoteFile, missing, unrelated]) == [local, remoteFile].map { $0.resolvingSymlinksInPath() })
+        try FileManager.default.removeItem(at: local)
+        #expect(TerminalProject.savedProjectURLs(in: folder, recent: [local, remoteFile]) == [remoteFile.resolvingSymlinksInPath()])
     }
 
 }
