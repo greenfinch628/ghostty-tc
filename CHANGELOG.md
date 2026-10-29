@@ -1,5 +1,7 @@
 # ghostty-tc - 1.3.1
 
+- 2026-10-29T19:02:51Z — Maintenance: Completed local-project cleanup, retired intermediate backups to Trash, retained baseline and latest rollback packages, and recorded the final package checksum, executable match, signing checks, and 229-test validation. Source checkpoint: project-workspaces-2026-10-29.
+
 - 2026-10-29T18:54:07Z — Changed: Saved projects use Ghostty-TC native recent documents, including Dock access after Quit and direct project-file opening. Cold project launches suppress the extra terminal and recovery windows. Retired the separate Projects launcher and its packaging. Validated project-document opening, native recent registration, the macOS test suite, signing, and installation on Miller. Work assisted by OpenAI Codex.
 
 - 2026-10-29T18:43:42Z — Added: Standalone Ghostty-TC Projects chooser with a default one-window/one-tab option and saved-project launch from a fully quit app. Explicit cold launches skip quit recovery and the extra initial terminal. Packaging and source installation include the companion launcher. Validated the macOS tests and native launcher build, verified both signatures, and installed both apps on Miller. Work assisted by OpenAI Codex.
