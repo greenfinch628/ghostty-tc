@@ -64,6 +64,27 @@ Middle-click opens Ghostty’s existing native context menu without forwarding a
 
 The macOS customization honors `window-show-tab-bar = always`. It preserves native behavior for `auto` and `never`; `never` is not newly implemented on macOS. Restart after changing tab-bar behavior.
 
+## Local projects (Step 1)
+
+Arrange local terminal windows and tabs, then choose **File > Save Project…**.
+Name the `.ghostty-project` file; the default folder is
+`~/Library/Application Support/Ghostty-TC/Projects`. **File > Open Project…**
+opens the saved layout in additional windows without closing existing work.
+Saving to the same file explicitly replaces that snapshot after the save panel's
+normal overwrite confirmation; closing windows never updates a saved project.
+
+Snapshots include window positions and sizes, tab grouping and order, selected
+tabs, custom tab names, colors and automatic-color mode, and local working folders.
+Windows are constrained to connected screens if a saved monitor is unavailable.
+Each tab starts a fresh shell using the current configuration. Running programs,
+scrollback, SSH connections, remote directories, split panes, fullscreen state,
+and Spaces are not captured. Known `SSH: ` tabs and split panes are rejected;
+unmarked SSH tabs cannot be identified reliably and must be excluded by closing
+them before saving. This first step is for local sessions only. Missing folders
+or invalid project data are reported before any project windows are opened.
+Dock access and project management are later steps. Automatic quit restoration
+and the normal launch configuration remain independent of explicit project files.
+
 ## Host mappings and manual priority
 
 Create `~/.config/ghostty/tc-host-colors`, or `$XDG_CONFIG_HOME/ghostty/tc-host-colors` if that variable is set:

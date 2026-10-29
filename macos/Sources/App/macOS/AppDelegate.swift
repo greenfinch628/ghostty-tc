@@ -207,6 +207,8 @@ class AppDelegate: NSObject,
             "ApplePressAndHoldEnabled": false,
         ])
 
+        installProjectMenu()
+
         // Store our start time
         applicationLaunchTime = ProcessInfo.processInfo.systemUptime
 
