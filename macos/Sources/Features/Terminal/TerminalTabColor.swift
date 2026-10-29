@@ -67,22 +67,39 @@ enum TerminalTabColor: Int, CaseIterable, Codable {
         }
     }
 
-    /// Choose the higher-contrast monochrome label for the opaque tab fill.
-    /// Resolve dynamic system colors in the tab's current appearance first.
-    func foregroundColor(for appearance: NSAppearance) -> NSColor? {
+    /// Normalize perceived lightness so every hue has the same selection contrast.
+    /// Mix in linear sRGB to preserve the hue while targeting a known luminance.
+    func backgroundColor(selected: Bool, for appearance: NSAppearance) -> NSColor? {
         guard let displayColor else { return nil }
         var resolved: NSColor?
         appearance.performAsCurrentDrawingAppearance {
             resolved = displayColor.usingColorSpace(.sRGB)
         }
-        guard let resolved else { return .labelColor }
+        guard let resolved else { return nil }
         func linear(_ value: CGFloat) -> CGFloat {
             value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
         }
-        let luminance = 0.2126 * linear(resolved.redComponent) +
-            0.7152 * linear(resolved.greenComponent) +
-            0.0722 * linear(resolved.blueComponent)
-        return luminance > 0.179 ? .black : .white
+        func encoded(_ value: CGFloat) -> CGFloat {
+            value <= 0.0031308 ? value * 12.92 : 1.055 * pow(value, 1 / 2.4) - 0.055
+        }
+        let red = linear(resolved.redComponent)
+        let green = linear(resolved.greenComponent)
+        let blue = linear(resolved.blueComponent)
+        let luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+        let target: CGFloat = selected ? 0.65 : 0.055
+        func component(_ value: CGFloat) -> CGFloat {
+            if luminance < target {
+                let amount = (target - luminance) / (1 - luminance)
+                return encoded(value + (1 - value) * amount)
+            }
+            return encoded(value * target / luminance)
+        }
+        return NSColor(srgbRed: component(red), green: component(green), blue: component(blue), alpha: 1)
+    }
+
+    func foregroundColor(selected: Bool = true, for appearance: NSAppearance) -> NSColor? {
+        guard backgroundColor(selected: selected, for: appearance) != nil else { return nil }
+        return selected ? .black : .white
     }
 
     func swatchImage(selected: Bool) -> NSImage {

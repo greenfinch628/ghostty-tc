@@ -90,9 +90,14 @@ class TerminalWindow: NSWindow {
         target.usesAutomaticTabColor = true
     }
 
+    fileprivate var isSelectedTab: Bool {
+        guard let tabGroup else { return true }
+        return tabGroup.selectedWindow === self
+    }
+
     private var tabForegroundColor: NSColor? {
         guard tabColorAccessory?.hasBackground == true else { return nil }
-        return tabColor.foregroundColor(for: effectiveAppearance)
+        return tabColor.foregroundColor(selected: isSelectedTab, for: effectiveAppearance)
     }
 
     fileprivate func updateTabColorText() {
@@ -745,6 +750,8 @@ private final class TabColorAccessoryView: NSStackView {
     weak var terminalWindow: TerminalWindow?
     weak var indicator: NSView?
     private let background = TabColorBackgroundView()
+    private weak var observedTabGroup: NSWindowTabGroup?
+    private var selectionObservation: NSKeyValueObservation?
 
     var hasBackground: Bool { background.superview != nil }
 
@@ -769,8 +776,18 @@ private final class TabColorAccessoryView: NSStackView {
     }
 
     func updateBackground() {
+        let group = terminalWindow?.tabGroup
+        if observedTabGroup !== group {
+            selectionObservation = nil
+            observedTabGroup = group
+            selectionObservation = group?.observe(\.selectedWindow, options: [.new]) { [weak self] _, _ in
+                self?.updateBackground()
+            }
+        }
         guard let terminalWindow,
-              let color = terminalWindow.tabColor.displayColor,
+              let color = terminalWindow.tabColor.backgroundColor(
+                selected: terminalWindow.isSelectedTab, for: terminalWindow.effectiveAppearance
+              ),
               let button = firstSuperview(withClassName: "NSTabButton"),
               let container = button.firstDescendant(withID: "_tabButtonContainerView")
         else {

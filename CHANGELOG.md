@@ -1,5 +1,7 @@
 # ghostty-tc - 1.3.1
 
+- 2026-10-29T16:55:17Z — Changed: Colored tabs use equally light active fills with dark text and dark inactive fills with white text; selection follows the selected tab even when the app is unfocused. Work assisted by OpenAI Codex.
+
 - 2026-10-17T13:42:58Z — Changed: Validated the Miller Xcode build and test action using the documented native archive repair, verified signing, and installed the updated app with a previous-app backup. Documented continued development and dual-host publishing from Miller. Work assisted by OpenAI Codex.
 - 2026-10-15T22:21:55Z — Added: Source build-and-install command with optional tests, signature verification, and previous-app backup; documented clean-Mac testing.
 

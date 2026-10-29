@@ -290,3 +290,30 @@ class TemporaryConfig: Ghostty.Config {
         #expect(mapping.color(forTitle: "~", localHost: "other") == .none)
     }
 }
+
+@Suite @MainActor struct TabSelectionColorTests {
+    @Test func everyHueHasDistinctSelectionAndReadableText() throws {
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let appearance = try #require(NSAppearance(named: name))
+            for color in TerminalTabColor.allCases where color != .none {
+                let active = try #require(color.backgroundColor(selected: true, for: appearance))
+                let inactive = try #require(color.backgroundColor(selected: false, for: appearance))
+                func luminance(_ color: NSColor) -> CGFloat {
+                    func linear(_ value: CGFloat) -> CGFloat {
+                        value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+                    }
+                    return 0.2126 * linear(color.redComponent) +
+                        0.7152 * linear(color.greenComponent) + 0.0722 * linear(color.blueComponent)
+                }
+                let light = luminance(active)
+                let dark = luminance(inactive)
+                #expect((light + 0.05) / (dark + 0.05) > 6)
+                #expect((light + 0.05) / 0.05 >= 4.5)
+                #expect(1.05 / (dark + 0.05) >= 4.5)
+                #expect(color.foregroundColor(selected: true, for: appearance) == .black)
+                #expect(color.foregroundColor(selected: false, for: appearance) == .white)
+            }
+            #expect(TerminalTabColor.none.backgroundColor(selected: true, for: appearance) == nil)
+        }
+    }
+}
