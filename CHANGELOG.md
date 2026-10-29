@@ -1,5 +1,7 @@
 # ghostty-tc - 1.3.1
 
+- 2026-10-29T18:43:42Z — Added: Standalone Ghostty-TC Projects chooser with a default one-window/one-tab option and saved-project launch from a fully quit app. Explicit cold launches skip quit recovery and the extra initial terminal. Packaging and source installation include the companion launcher. Validated the macOS tests and native launcher build, verified both signatures, and installed both apps on Miller. Work assisted by OpenAI Codex.
+
 - 2026-10-29T18:33:16Z — Added: Open Project and saved project shortcuts in the Dock menu, refreshed on each opening. Includes default-folder projects and recently used project files elsewhere without opening an extra terminal first. Passed the macOS test suite, including Dock action restoration, verified signing, and installed on Miller. Work assisted by OpenAI Codex.
 
 - 2026-10-29T18:03:19Z — Added: Explicit local project save/open from the File menu, preserving multiple window frames, tab grouping/order, selected tabs, local folders, custom names, and color modes. Projects open in additional windows and recover placement when a display is disconnected. SSH sessions and split panes are deferred. Validated the macOS build and test suite, including live multiwindow save/reopen and File menu checks; packaged, verified signing, and installed on Miller. Work assisted by OpenAI Codex.

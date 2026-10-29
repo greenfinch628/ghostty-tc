@@ -101,7 +101,7 @@ class TerminalWindowRestoration: NSObject, NSWindowRestoration {
         // no matter what. Note its safe to use "ghostty.config" directly here
         // because window restoration is only ever invoked on app start so we
         // don't have to deal with config reloads.
-        if appDelegate.ghostty.config.windowSaveState == "never" {
+        if appDelegate.isExplicitProjectLaunch || appDelegate.ghostty.config.windowSaveState == "never" {
             completionHandler(nil, nil)
             return
         }

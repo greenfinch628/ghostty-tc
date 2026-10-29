@@ -82,6 +82,9 @@ class AppDelegate: NSObject,
     @IBOutlet private var menuMoveSplitDividerLeft: NSMenuItem?
     @IBOutlet private var menuMoveSplitDividerRight: NSMenuItem?
 
+    /// A launcher request owns startup; avoid automatic recovery and the initial blank window.
+    let isExplicitProjectLaunch = ProcessInfo.processInfo.environment["GHOSTTY_TC_EXPLICIT_LAUNCH"] == "1"
+
     /// The dock menu
     private var dockMenu: NSMenu = NSMenu()
 
@@ -358,7 +361,7 @@ class AppDelegate: NSObject,
             // is possible to have other windows in a few scenarios:
             //   - if we're opening a URL since `application(_:openFile:)` is called before this.
             //   - if we're restoring from persisted state
-            if TerminalController.all.isEmpty && derivedConfig.initialWindow {
+            if TerminalController.all.isEmpty && derivedConfig.initialWindow && !isExplicitProjectLaunch {
                 undoManager.disableUndoRegistration()
                 _ = TerminalController.newWindow(ghostty)
                 undoManager.enableUndoRegistration()
@@ -883,7 +886,7 @@ class AppDelegate: NSObject,
         Self.logger.debug("application will restore window state")
 
         // Decode our quick terminal state.
-        if ghostty.config.windowSaveState != "never",
+        if !isExplicitProjectLaunch, ghostty.config.windowSaveState != "never",
             let state = QuickTerminalRestorableState(coder: coder) {
             quickTerminalControllerState = .pendingRestore(state)
         }

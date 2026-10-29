@@ -2,6 +2,7 @@ import AppKit
 import Testing
 @testable import Ghostty
 
+@Suite(.serialized)
 struct TerminalProjectTests {
     private func sample() -> TerminalProject {
         let folder = FileManager.default.temporaryDirectory.path
@@ -113,6 +114,13 @@ struct TerminalProjectTests {
         #expect(captured.tabs[0].color == .blue)
         #expect(!captured.tabs[0].automaticColor)
         #expect(snapshot.windows.contains { $0.tabs.first?.title == "Other window" })
+        var launch = URLComponents()
+        launch.scheme = "ghostty-tc-project"
+        launch.host = "open"
+        launch.queryItems = [.init(name: "path", value: url.path)]
+        delegate.application(NSApp, open: [try #require(launch.url)])
+        try await Task.sleep(for: .seconds(1))
+        #expect(TerminalController.all.count == existing.count + 6)
         let directory = try #require(research.surfaceTree.first?.pwd)
         #expect(URL(fileURLWithPath: directory).resolvingSymlinksInPath() ==
                 URL(fileURLWithPath: project.windows[0].tabs[0].directory).resolvingSymlinksInPath())
@@ -139,6 +147,43 @@ struct TerminalProjectTests {
         #expect(TerminalProject.savedProjectURLs(in: folder, recent: [local, remoteFile, missing, unrelated]) == [local, remoteFile].map { $0.resolvingSymlinksInPath() })
         try FileManager.default.removeItem(at: local)
         #expect(TerminalProject.savedProjectURLs(in: folder, recent: [local, remoteFile]) == [remoteFile.resolvingSymlinksInPath()])
+    }
+
+    @Test func parsesLauncherRequestsWithoutLosingPathCharacters() throws {
+        let file = URL(fileURLWithPath: "/tmp/Project #1 & 50%.ghostty-project")
+        var components = URLComponents()
+        components.scheme = "ghostty-tc-project"
+        components.host = "open"
+        components.queryItems = [.init(name: "path", value: file.path)]
+        let request = try TerminalProject.launchRequest(from: #require(components.url))
+        #expect(request == .project(file))
+        #expect(try TerminalProject.launchRequest(from: #require(URL(string: "ghostty-tc-project://default"))) == .defaultTerminal)
+        for invalid in ["https://default", "ghostty-tc-project://open", "ghostty-tc-project://open?path=relative.ghostty-project",
+                        "ghostty-tc-project://open?path=/tmp/script.sh"] {
+            #expect(throws: (any Error).self) {
+                try TerminalProject.launchRequest(from: #require(URL(string: invalid)))
+            }
+        }
+    }
+
+    @Test @MainActor func launcherDefaultAddsExactlyOneStandaloneTab() async throws {
+        let delegate = try #require(NSApp.delegate as? AppDelegate)
+        let before = Set(TerminalController.all.map { ObjectIdentifier($0) })
+        defer {
+            for controller in TerminalController.all where !before.contains(ObjectIdentifier(controller)) {
+                controller.closeTabImmediately(registerRedo: false)
+            }
+        }
+        delegate.application(NSApp, open: [try #require(URL(string: "ghostty-tc-project://default"))])
+        try await Task.sleep(for: .seconds(2))
+        let added = TerminalController.all.filter { !before.contains(ObjectIdentifier($0)) }
+        #expect(added.count == 1)
+        let controller = try #require(added.first)
+        #expect(controller.window?.tabGroup?.windows.count ?? 1 == 1)
+        #expect(!controller.surfaceTree.isSplit)
+        let directory = try #require(controller.surfaceTree.first?.pwd)
+        #expect(URL(fileURLWithPath: directory).resolvingSymlinksInPath() ==
+                FileManager.default.homeDirectoryForCurrentUser.resolvingSymlinksInPath())
     }
 
 }

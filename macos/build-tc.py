@@ -68,6 +68,8 @@ with tempfile.TemporaryDirectory(prefix='ghostty-tc-') as temporary:
                 CFBundleShortVersionString='1.3.1', CFBundleVersion='131',
                 SUEnableAutomaticChecks=False, GhosttyTCDefaultIcon='holographic',
                 CFBundleIconFile='GhosttyTC')
+    info['CFBundleURLTypes'] = [dict(CFBundleURLName='Ghostty-TC Project Launcher',
+                                   CFBundleURLSchemes=['ghostty-tc-project'])]
     info.pop('CFBundleIconName', None)
     info_path.write_bytes(plistlib.dumps(info))
     iconset = temporary / 'GhosttyTC.iconset'
@@ -86,3 +88,5 @@ with tempfile.TemporaryDirectory(prefix='ghostty-tc-') as temporary:
     run('ditto', '-c', '-k', '--norsrc', '--noextattr', '--keepParent',
         app, out / 'Ghostty-TC.zip')
 print(out / 'Ghostty-TC.zip')
+
+run('python3', root / 'macos/build-project-launcher.py')

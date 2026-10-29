@@ -55,6 +55,26 @@ struct TerminalProject: Codable {
         }
     }
 
+    enum LaunchRequest: Equatable {
+        case defaultTerminal
+        case project(URL)
+    }
+
+    static func launchRequest(from url: URL) throws -> LaunchRequest {
+        guard url.scheme == "ghostty-tc-project" else {
+            throw ProjectError.invalid("This is not a Ghostty-TC project launcher request.")
+        }
+        if url.host == "default" { return .defaultTerminal }
+        guard url.host == "open",
+              let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "path" })?.value,
+              path.hasPrefix("/"), !path.contains("\0"),
+              URL(fileURLWithPath: path).pathExtension.lowercased() == "ghostty-project" else {
+            throw ProjectError.invalid("The launcher request has no valid project file path.")
+        }
+        return .project(URL(fileURLWithPath: path))
+    }
+
     /// Include existing snapshots and recently used files saved outside the default folder.
     static func savedProjectURLs(in directory: URL, recent: [URL]) -> [URL] {
         let files = (try? FileManager.default.contentsOfDirectory(
@@ -84,6 +104,34 @@ struct TerminalProject: Codable {
 }
 
 extension AppDelegate {
+    func application(_ sender: NSApplication, open urls: [URL]) {
+        for url in urls {
+            if url.isFileURL {
+                _ = application(sender, openFile: url.path)
+                continue
+            }
+            do {
+                switch try TerminalProject.launchRequest(from: url) {
+                case .defaultTerminal:
+                    var config = Ghostty.SurfaceConfiguration()
+                    config.workingDirectory = FileManager.default.homeDirectoryForCurrentUser.path
+                    let controller = TerminalController(ghostty, withBaseConfig: config)
+                    controller.window?.tabbingMode = .disallowed
+                    DispatchQueue.main.async {
+                        controller.showWindow(nil)
+                        controller.window?.tabbingMode = .preferred
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
+                case .project(let file):
+                    loadLocalProject(at: file)
+                }
+            } catch {
+                NSApp.activate(ignoringOtherApps: true)
+                NSApp.presentError(error)
+            }
+        }
+    }
+
     func installProjectMenu() {
         guard let menu = NSApp.mainMenu?.items.compactMap({ $0.submenu }).first(where: { menu in
             menu.items.contains { $0.action == #selector(TerminalController.newWindow(_:)) }
