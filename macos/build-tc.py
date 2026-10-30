@@ -66,7 +66,7 @@ with tempfile.TemporaryDirectory(prefix='ghostty-tc-') as temporary:
     info.update(CFBundleName='Ghostty-TC', CFBundleDisplayName='Ghostty-TC',
                 CFBundleIdentifier='local.miller.ghosttytc.singletab',
                 CFBundleShortVersionString='1.3.1', CFBundleVersion='131',
-                SUEnableAutomaticChecks=False, GhosttyTCDefaultIcon='holographic',
+                SUEnableAutomaticChecks=False, GhosttyTCDefaultIcon='custom',
                 CFBundleIconFile='GhosttyTC')
     info['CFBundleURLTypes'] = [dict(CFBundleURLName='Ghostty-TC Project Requests',
                                    CFBundleURLSchemes=['ghostty-tc-project'])]
@@ -81,14 +81,8 @@ with tempfile.TemporaryDirectory(prefix='ghostty-tc-') as temporary:
         UTTypeTagSpecification={'public.filename-extension': ['ghostty-project']})]
     info.pop('CFBundleIconName', None)
     info_path.write_bytes(plistlib.dumps(info))
-    iconset = temporary / 'GhosttyTC.iconset'
-    iconset.mkdir()
-    icon_source = root / 'macos/Assets.xcassets/Alternate Icons/HolographicImage.imageset/macOS-AppIcon-1024px.png'
-    for size in [16, 32, 128, 256, 512]:
-        for scale in [1, 2]:
-            name = f'icon_{size}x{size}' + ('@2x' if scale == 2 else '') + '.png'
-            run('sips', '-z', size * scale, size * scale, icon_source, '--out', iconset / name)
-    run('iconutil', '-c', 'icns', iconset, '-o', app / 'Contents/Resources/GhosttyTC.icns')
+    # Use the preserved TC icon; never regenerate it from an upstream alternate.
+    shutil.copy2(root / 'macos/Icons/GhosttyTC.icns', app / 'Contents/Resources/GhosttyTC.icns')
     run('xattr', '-cr', app)
     run('codesign', '--force', '--sign', '-', '--entitlements',
         root / 'macos/GhosttyDebug.entitlements', '--identifier',

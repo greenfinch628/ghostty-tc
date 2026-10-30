@@ -21,8 +21,15 @@ enum AppIcon: Equatable, Codable {
         switch config.macosIcon {
         case .official:
             // Only packaged TC builds opt into this alternate default.
-            guard Bundle.main.infoDictionary?["GhosttyTCDefaultIcon"] as? String == "holographic" else { return nil }
-            self = .holographic
+            if Bundle.main.infoDictionary?["GhosttyTCDefaultIcon"] as? String == "custom",
+               let url = Bundle.main.url(forResource: "GhosttyTC", withExtension: "icns"),
+               let data = try? Data(contentsOf: url) {
+                self = .custom(data)
+            } else if Bundle.main.infoDictionary?["GhosttyTCDefaultIcon"] as? String == "holographic" {
+                self = .holographic
+            } else {
+                return nil
+            }
         case .blueprint:
             self = .blueprint
         case .chalkboard:

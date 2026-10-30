@@ -15,6 +15,13 @@ class DockTilePlugin: NSObject, NSDockTilePlugIn {
         return UserDefaults(suiteName: identifier)
     }
 
+    // Packaged TC builds already contain the Finder icon. Writing a resource
+    // fork onto the signed bundle would invalidate its signature after launch.
+    private var usesBundledTCIcon: Bool {
+        guard let url = ghosttyAppURL else { return false }
+        return Bundle(url: url)?.infoDictionary?["GhosttyTCDefaultIcon"] as? String == "custom"
+    }
+
     private var iconChangeObserver: Any?
 
     /// The URL to the enclosing app bundle, determined from the plugin bundle path.
@@ -70,7 +77,7 @@ class DockTilePlugin: NSObject, NSDockTilePlugIn {
             return
         }
 
-        if let appBundleURL = self.ghosttyAppURL {
+        if let appBundleURL = self.ghosttyAppURL, !usesBundledTCIcon {
             let appBundlePath = appBundleURL.path
             NSWorkspace.shared.setIcon(appIcon, forFile: appBundlePath)
             NSWorkspace.shared.noteFileSystemChanged(appBundlePath)
