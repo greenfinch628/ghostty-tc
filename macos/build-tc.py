@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build and package the native Ghostty-TC app without installing it."""
 import argparse
+import json
 from pathlib import Path
 import plistlib
 import shutil
@@ -87,6 +88,27 @@ with tempfile.TemporaryDirectory(prefix='ghostty-tc-') as temporary:
     # The upstream icon override plugin can retain a stale alternate icon.
     shutil.rmtree(app / 'Contents/PlugIns/DockTilePlugin.plugin', ignore_errors=True)
     info.pop('NSDockTilePlugIn', None)
+    info_path.write_bytes(plistlib.dumps(info))
+    # Tahoe can resolve its Dock artwork from Assets.car rather than ICNS.
+    # Recompile the full catalog with a TC appiconset, omitting Ghostty.icon.
+    catalog = temporary / 'TCIcons.xcassets'
+    iconset = catalog / 'Ghostty.appiconset'
+    iconset.mkdir(parents=True)
+    images = []
+    for size in [16, 32, 128, 256, 512]:
+        for scale in [1, 2]:
+            name = f'icon_{size}x{size}' + ('@2x' if scale == 2 else '') + '.png'
+            shutil.copy2(root / 'macos/Icons/GhosttyTC.iconset' / name, iconset / name)
+            images.append(dict(idiom='mac', size=f'{size}x{size}',
+                               scale=f'{scale}x', filename=name))
+    (iconset / 'Contents.json').write_text(json.dumps(dict(
+        images=images, info=dict(author='xcode', version=1))))
+    run('xcrun', 'actool', root / 'macos/Assets.xcassets', catalog,
+        '--compile', app / 'Contents/Resources', '--platform', 'macosx',
+        '--minimum-deployment-target', '13.0', '--app-icon', 'Ghostty',
+        '--output-partial-info-plist', temporary / 'TCIconInfo.plist',
+        '--target-device', 'mac', '--development-region', 'en')
+    info['CFBundleIconName'] = 'Ghostty'
     info_path.write_bytes(plistlib.dumps(info))
     run('xattr', '-cr', app)
     run('codesign', '--force', '--sign', '-', '--entitlements',

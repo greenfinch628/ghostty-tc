@@ -28,3 +28,7 @@
 ## 2026-10-30T01:44:10Z
 
 - Fixed: packaged Ghostty-TC uses its native bundled application icon in Finder and Dock without the upstream alternate-icon Dock plugin.
+
+## 2026-10-30T01:46:21Z
+
+- Fixed: recompile packaged TC asset catalogs with the custom application icon, replacing the embedded Tahoe Icon Composer artwork used by the Dock.
