@@ -7,3 +7,9 @@ The built-in imagegen tool refined the supplied image using this prompt: “Crea
 `macos/build-tc.py` copies this ICNS into the packaged TC bundle before signing. Packaged TC builds omit the upstream Dock override plugin. The packaging helper recompiles the complete image catalog using the custom appiconset instead of the upstream Tahoe Icon Composer artwork, so Finder and Dock resolve the same icon. Upstream Ghostty assets are unchanged. Build/install using `python3 scripts/build-and-install.py`; do not replace the master with the upstream holographic icon.
 
 To regenerate ICNS from the preserved iconset: `iconutil -c icns macos/Icons/GhosttyTC.iconset -o macos/Icons/GhosttyTC.icns`.
+
+## Blue terminal prompt option
+
+`BluePrompt-approved.png` is the approved imagegen preview, preserved unchanged. `BluePrompt.iconset` and `BluePrompt.icns` are resized macOS representations. Packaged builds use this icon by default. The Application Icon… menu saves a per-user choice between Blue Terminal Prompt and Original Ghostty-TC. All pre-existing icon artwork remains unchanged.
+
+Built-in imagegen prompt: move the terminal prompt upward by half the empty top gap; shorten the underscore to 70% of its previous width; preserve blue hue, near-black interior and blue outer border; no ghost emblem. A follow-up requested a 132-pixel underscore and clean exterior. The user-approved generated image is the authoritative source.

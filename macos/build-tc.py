@@ -83,7 +83,10 @@ with tempfile.TemporaryDirectory(prefix='ghostty-tc-') as temporary:
     info.pop('CFBundleIconName', None)
     info_path.write_bytes(plistlib.dumps(info))
     # Use the preserved TC icon; never regenerate it from an upstream alternate.
-    shutil.copy2(root / 'macos/Icons/GhosttyTC.icns', app / 'Contents/Resources/GhosttyTC.icns')
+    shutil.copy2(root / 'macos/Icons/BluePrompt.icns', app / 'Contents/Resources/GhosttyTC.icns')
+    for name in ['GhosttyTC', 'BluePrompt']:
+        shutil.copy2(root / f'macos/Icons/{name}.icns',
+                     app / f'Contents/Resources/{name}-choice.icns')
     # Use the same native bundle icon in Finder and the pinned/running Dock.
     # The upstream icon override plugin can retain a stale alternate icon.
     shutil.rmtree(app / 'Contents/PlugIns/DockTilePlugin.plugin', ignore_errors=True)
@@ -98,7 +101,7 @@ with tempfile.TemporaryDirectory(prefix='ghostty-tc-') as temporary:
     for size in [16, 32, 128, 256, 512]:
         for scale in [1, 2]:
             name = f'icon_{size}x{size}' + ('@2x' if scale == 2 else '') + '.png'
-            shutil.copy2(root / 'macos/Icons/GhosttyTC.iconset' / name, iconset / name)
+            shutil.copy2(root / 'macos/Icons/BluePrompt.iconset' / name, iconset / name)
             images.append(dict(idiom='mac', size=f'{size}x{size}',
                                scale=f'{scale}x', filename=name))
     (iconset / 'Contents.json').write_text(json.dumps(dict(

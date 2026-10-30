@@ -860,7 +860,42 @@ class AppDelegate: NSObject,
         NSApplication.shared.appearance = .init(ghosttyConfig: config)
     }
 
+    private var iconPreferencesWindow: NSWindow?
+
+    @IBAction func openApplicationIcon(_ sender: Any?) {
+        if iconPreferencesWindow == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 448, height: 260),
+                styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.title = "Application Icon"
+            window.isReleasedWhenClosed = false
+            window.contentView = NSHostingView(rootView: TCIconPreferences().environmentObject(self))
+            window.center()
+            iconPreferencesWindow = window
+        }
+        iconPreferencesWindow?.makeKeyAndOrderFront(sender)
+    }
+
+    func applyTCApplicationIcon() {
+        guard Bundle.main.infoDictionary?["GhosttyTCDefaultIcon"] as? String == "custom" else { return }
+        let saved = UserDefaults.ghostty.string(forKey: "TCApplicationIcon") ?? "BluePrompt"
+        let name = saved == "GhosttyTC" ? "GhosttyTC" : "BluePrompt"
+        guard let url = Bundle.main.url(forResource: name + "-choice", withExtension: "icns"),
+              let data = try? Data(contentsOf: url),
+              let image = AppIcon.custom(data).image(in: Bundle.main) else { return }
+        appIcon = image
+        NSApp.applicationIconImage = image
+        UserDefaults.ghostty.appIcon = .custom(data)
+        // The new icon is already native bundle artwork; clear any old Finder override.
+        // Only the optional original needs a per-user Finder custom icon.
+        NSWorkspace.shared.setIcon(name == "GhosttyTC" ? image : nil, forFile: Bundle.main.bundlePath)
+    }
+
     private func updateAppIcon(from config: Ghostty.Config) {
+        if Bundle.main.infoDictionary?["GhosttyTCDefaultIcon"] as? String == "custom" {
+            applyTCApplicationIcon()
+            return
+        }
         // Since this is called after `DockTilePlugin` has been running,
         // clean it up here to trigger a correct update of the current config.
         UserDefaults.ghostty.removeObject(forKey: "CustomGhosttyIcon")

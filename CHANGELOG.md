@@ -32,3 +32,9 @@
 ## 2026-10-30T01:46:21Z
 
 - Fixed: recompile packaged TC asset catalogs with the custom application icon, replacing the embedded Tahoe Icon Composer artwork used by the Dock.
+
+## 2026-10-30T15:12:52Z
+
+- Added: Approved blue terminal prompt application icon and persistent Application Icon chooser; retain the original Ghostty-TC icon as a selectable option.
+
+- Validation: macOS build and test action passed; both icon choices verified in the installed preference window; Blue Terminal Prompt restored and saved. Final package uses native bundle artwork for the new icon and retains the old artwork unchanged.
