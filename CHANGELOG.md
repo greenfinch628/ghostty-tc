@@ -20,3 +20,7 @@
 ## 2026-10-30T01:28:12Z
 
 - Appearance: preserve and package the custom black Ghostty-TC icon with its blue ghost and light-gray border; use it for Finder and Dock defaults.
+
+## 2026-10-30T01:40:10Z
+
+- Fixed: pinned Dock tiles use the packaged Ghostty-TC icon even before saved icon preferences load; package the TC Dock plugin with a separate identity.

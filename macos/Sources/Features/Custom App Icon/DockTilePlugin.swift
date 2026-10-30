@@ -88,6 +88,15 @@ class DockTilePlugin: NSObject, NSDockTilePlugIn {
 
     /// Reset the application icon and dock tile icon to the default.
     private func resetIcon(dockTile: NSDockTile) {
+        // A pinned tile may load before preferences are available. TC must
+        // still use its packaged icon rather than the upstream Debug fallback.
+        if usesBundledTCIcon,
+           let url = ghosttyAppURL?.appendingPathComponent("Contents/Resources/GhosttyTC.icns"),
+           let image = NSImage(contentsOf: url) {
+            dockTile.setIcon(image)
+            return
+        }
+
         let appBundlePath = self.ghosttyAppURL?.path
         let appIcon: NSImage
         if #available(macOS 26.0, *) {

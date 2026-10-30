@@ -83,7 +83,17 @@ with tempfile.TemporaryDirectory(prefix='ghostty-tc-') as temporary:
     info_path.write_bytes(plistlib.dumps(info))
     # Use the preserved TC icon; never regenerate it from an upstream alternate.
     shutil.copy2(root / 'macos/Icons/GhosttyTC.icns', app / 'Contents/Resources/GhosttyTC.icns')
+    # Keep the fork's pinned Dock plugin distinct from regular Ghostty.
+    plugin = app / 'Contents/PlugIns/DockTilePlugin.plugin'
+    plugin_info_path = plugin / 'Contents/Info.plist'
+    plugin_info = plistlib.loads(plugin_info_path.read_bytes())
+    plugin_info.update(CFBundleIdentifier='local.miller.ghosttytc.dock-tile',
+                       CFBundleDisplayName='Ghostty-TC Dock Tile Plugin',
+                       NSPrincipalClass='DockTilePlugin.DockTilePlugin')
+    plugin_info_path.write_bytes(plistlib.dumps(plugin_info))
     run('xattr', '-cr', app)
+    run('codesign', '--force', '--sign', '-', '--identifier',
+        'local.miller.ghosttytc.dock-tile', plugin)
     run('codesign', '--force', '--sign', '-', '--entitlements',
         root / 'macos/GhosttyDebug.entitlements', '--identifier',
         'local.miller.ghosttytc.singletab', app)
