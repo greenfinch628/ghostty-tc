@@ -24,3 +24,7 @@
 ## 2026-10-30T01:40:10Z
 
 - Fixed: pinned Dock tiles use the packaged Ghostty-TC icon even before saved icon preferences load; package the TC Dock plugin with a separate identity.
+
+## 2026-10-30T01:44:10Z
+
+- Fixed: packaged Ghostty-TC uses its native bundled application icon in Finder and Dock without the upstream alternate-icon Dock plugin.
